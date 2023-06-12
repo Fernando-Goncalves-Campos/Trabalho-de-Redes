@@ -1,6 +1,9 @@
 Alunos:                                 NUSP:
+
 -Bernardo Rodrigues Tameirão Santos     12733212
+
 -Fernando Gonçalves Campos              12542352
+
 -Samuel Figueiredo Veronez              12542626
 
 Versão SO:
