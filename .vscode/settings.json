@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "map": "cpp",
+        "thread": "cpp",
+        "iostream": "cpp",
+        "typeindex": "cpp",
+        "typeinfo": "cpp",
+        "system_error": "cpp",
+        "ostream": "cpp"
+    }
+}
