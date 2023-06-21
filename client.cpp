@@ -14,7 +14,8 @@
 
 #define MAX_LEN 4096
 #define MAX_NAME 50
-#define DEF_PORT 8000
+#define DEFAULT_PORT 8000
+#define NULL_NAME "#NULL"
 
 using namespace std;
 
@@ -42,7 +43,7 @@ int main()
 	struct sockaddr_in client;
 	client.sin_family=AF_INET;
 	client.sin_addr.s_addr=INADDR_ANY;
-	client.sin_port=htons(DEF_PORT);
+	client.sin_port=htons(DEFAULT_PORT);
 	bzero(&client.sin_zero, 0);
 
     //Tenta se conectar com o servidor
@@ -121,9 +122,12 @@ bool checkQuit(char command[]){
     if(command[1] == 'q' && command[2] == 'u' && command[3] == 'i' && command[4] == 't'){
         //Interrompe a execução do cliente
         exitFlag=true;
+
         t_recv.detach();
         t_send.detach();
+
         close(clientSocket);
+
         return true;
     }
 
@@ -194,7 +198,7 @@ void recvMessage(int clientSocket)
         eraseText(6);
 
         //Adiciona o número de usuário caso seja uma mensagem de outro cliente
-		if(strcmp(name, "#NULL")!=0){
+		if(strcmp(name, NULL_NAME)!=0){
 			cout << name << " : " << str << endl;
         }
 
