@@ -136,8 +136,11 @@ void eraseText(int cnt)
 	char backSpace=8;
 	for(int i=0; i<cnt; i++)
 	{
-		cout << backSpace;
-	}	
+        /*É preciso substituir o caractere por um vazio porque se a mensagem for menor que a quantidade apagada,
+          o texto antigo permance visível*/
+		cout << backSpace << ' ' << backSpace;
+	}
+
 }
 
 // Envia uma mensagem

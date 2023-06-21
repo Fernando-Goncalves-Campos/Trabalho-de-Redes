@@ -155,6 +155,9 @@ void sharedPrint(string str, bool endLine=true){
 
 //Define o nome do cliente
 bool setName(client_t &reqClient, string name){
+    //Impede mais de um cliente de executar comandos ao mesmo tempo
+    lock_guard<mutex> quard(clients_mtx);
+
     for(list<client_t>::iterator client = clients.begin(); client != clients.end(); ++client){
         if(client->name == name){
             //Decide como enviar a mensagem dependendo se o cliente já possui nome
@@ -207,34 +210,52 @@ bool setName(client_t &reqClient, string name){
 void leaveRoom(client_t &reqClient){
     for(list<client_t*>::iterator client = rooms[reqClient.room].begin(); client != rooms[reqClient.room].end(); ++client){
         if((*client)->id == reqClient.id){
-            //Retorna os valores do cliente para os estados iniciais
-            bool adm = reqClient.adm;
-            reqClient.adm = false;
-            reqClient.muted = false;
-
-            //Remove o cliente da sala
-            rooms[(*client)->room].erase(client);
+            //Informa que o cliente saiu da sala em que estava
+            sharedPrint(reqClient.name + " left room " + reqClient.room);
 
             //Envia mensagens para todos informando sobre a saída do cliente
-            string welcomeMessage = reqClient.name + string(" has left");
-            broadcastMessage("#NULL", reqClient.id, reqClient.room, NAME_MAX);
+            string welcomeMessage = string(reqClient.name) + string(" has left");
+            broadcastMessage("#NULL", reqClient.id, reqClient.room, MAX_NAME);
             broadcastMessage(welcomeMessage, reqClient.id, reqClient.room);
 
             //Apaga a sala caso não haja ninguém nela
-            if(rooms[reqClient.room].size() == 0 && reqClient.room != ""){
-                rooms.erase(reqClient.room);
-                sharedPrint(string("Room ") + string(reqClient.room) + " deleted");
+            if(rooms[reqClient.room].size() == 1){
+                //Remove o cliente da sala
+                reqClient.adm = false;
+                reqClient.muted = false;
+                rooms[(*client)->room].erase(client);
+
+                //Apaga a sala
+                if(reqClient.room != ""){
+                    rooms.erase(reqClient.room);
+                    sharedPrint(string("Room ") + string(reqClient.room) + " deleted");
+                }
             }
+
             //Determina o próximo adm
-            else if(adm){
+            else if(reqClient.adm){
+                //O próximo adm sempre é o primeiro que entrou das pessoas que sobraram
                 ++client;
                 (*client)->adm = true;
 
                 //Informa o cliente 
                 string warning = (*client)->name + string(" became the adm");
-                broadcastMessage("#NULL", -1, (*client)->room, NAME_MAX);
-                broadcastMessage(warning, -1, (*client)->room);
+                broadcastMessage("#NULL", reqClient.id, (*client)->room, MAX_NAME);
+                broadcastMessage(warning, reqClient.id, (*client)->room);
+                sharedPrint((*client)->name + " is now the adm of room " + (*client)->room);
+
+                //Remove o cliente da sala
+                reqClient.adm = false;
+                reqClient.muted = false;
+                rooms[reqClient.room].erase(--client);
             }
+
+            else{
+                //Caso não seja nenhum cenário especial, ele apenas remove o cliente
+                reqClient.adm = false;
+                reqClient.muted = false;
+                rooms[reqClient.room].erase(client);
+            }    
 
             return;
         }
@@ -246,20 +267,28 @@ void joinRoom(client_t &reqClient, string roomName){
     reqClient.room = roomName;
     for(map<string, list<client_t*>>::iterator room = rooms.begin(); room != rooms.end(); ++room){
         if(room->first == roomName){
-            room->second.push_back(&reqClient);
-
             //Envia mensagens para todos informando sobre a entrada do cliente
             string welcomeMessage = reqClient.name + string(" has joined");
-            broadcastMessage("#NULL", reqClient.id, roomName, NAME_MAX);
+            broadcastMessage("#NULL", reqClient.id, roomName, MAX_NAME);
             broadcastMessage(welcomeMessage, reqClient.id, roomName);
+
+            //Adiciona o cliente na sala
+            room->second.push_back(&reqClient);
+
+            //Imprime no terminal uma mensagem informando que o cliente entrou em uma sala
+            sharedPrint(reqClient.name + " joined room " + roomName);
             return;
         }
     }
 
+    //Cria uma nova sala
     rooms.insert(pair<string, list<client_t*>>(roomName, list<client_t*>()));
     sharedPrint(string("Room ") + roomName + " created");
+    
+    //Adiciona o cliente como adm dessa sala
     rooms[roomName].push_back(&reqClient);
     reqClient.adm = true;
+    sharedPrint(reqClient.name + " is now the adm of room " + roomName);
 }
 
 //Verifica qual comando foi executado
@@ -271,7 +300,15 @@ bool handleCommands(client_t &reqClient, string str){
     ////Comandos livres
     //Comando /join
     if(command == "/join"){
-        join(reqClient, str.substr(commandEnd+1));
+        if(commandEnd != string::npos){
+            join(reqClient, str.substr(commandEnd+1));
+        }
+        else{
+            char nullName[MAX_NAME] = "#NULL";
+            char warning[MAX_LEN] = "You need to provide the name of the room";
+            send(reqClient.socket,nullName,sizeof(nullName),0);
+            send(reqClient.socket,warning,sizeof(warning),0);
+        }
         return false;
     }
     //Comando /quit
@@ -281,7 +318,15 @@ bool handleCommands(client_t &reqClient, string str){
     }
     //Comando /nickname
     else if(command == "/nickname"){
-        nickname(reqClient, str.substr(commandEnd+1));
+        if(commandEnd != string::npos){
+            nickname(reqClient, str.substr(commandEnd+1));
+        }
+        else{
+            char nullName[MAX_NAME] = "#NULL";
+            char warning[MAX_LEN] = "You need to provide a new nickname";
+            send(reqClient.socket,nullName,sizeof(nullName),0);
+            send(reqClient.socket,warning,sizeof(warning),0);
+        }
         return false;
     }
     //Comando /ping
@@ -294,7 +339,15 @@ bool handleCommands(client_t &reqClient, string str){
     //Comando /kick
     else if(command == "/kick"){
         if(reqClient.adm){
-            kick(reqClient, str.substr(commandEnd+1));
+            if(commandEnd != string::npos){
+                kick(reqClient, str.substr(commandEnd+1));
+            }
+            else{
+                char nullName[MAX_NAME] = "#NULL";
+                char warning[MAX_LEN] = "You need to provide the name of the client you want to kick";
+                send(reqClient.socket,nullName,sizeof(nullName),0);
+                send(reqClient.socket,warning,sizeof(warning),0);
+            }
         }
         else{
             char nullName[MAX_NAME] = "#NULL";
@@ -307,7 +360,15 @@ bool handleCommands(client_t &reqClient, string str){
     //Comando /mute
     else if(command == "/mute"){
         if(reqClient.adm){
-            mute(reqClient, str.substr(commandEnd+1));
+            if(commandEnd != string::npos){
+                mute(reqClient, str.substr(commandEnd+1));
+            }
+            else{
+                char nullName[MAX_NAME] = "#NULL";
+                char warning[MAX_LEN] = "You need to provide the name of the client you want to mute";
+                send(reqClient.socket,nullName,sizeof(nullName),0);
+                send(reqClient.socket,warning,sizeof(warning),0);
+            }
         }
         else{
             char nullName[MAX_NAME] = "#NULL";
@@ -320,7 +381,15 @@ bool handleCommands(client_t &reqClient, string str){
     //Comando /ummute
     else if(command == "/unmute"){
         if(reqClient.adm){
-            unmute(reqClient, str.substr(commandEnd+1));
+            if(commandEnd != string::npos){
+                unmute(reqClient, str.substr(commandEnd+1));
+            }
+            else{
+                char nullName[MAX_NAME] = "#NULL";
+                char warning[MAX_LEN] = "You need to provide the name of the client you want to unmute";
+                send(reqClient.socket,nullName,sizeof(nullName),0);
+                send(reqClient.socket,warning,sizeof(warning),0);
+            }
         }
         else{
             char nullName[MAX_NAME] = "#NULL";
@@ -333,7 +402,15 @@ bool handleCommands(client_t &reqClient, string str){
     //Comando /whois
     else if(command == "/whois"){
         if(reqClient.adm){
-            whois(reqClient, str.substr(commandEnd+1));
+            if(commandEnd != string::npos){
+                whois(reqClient, str.substr(commandEnd+1));
+            }
+            else{
+                char nullName[MAX_NAME] = "#NULL";
+                char warning[MAX_LEN] = "You need to provide the name of the client whose ID you want to know";
+                send(reqClient.socket,nullName,sizeof(nullName),0);
+                send(reqClient.socket,warning,sizeof(warning),0);
+            }
         }
         else{
             char nullName[MAX_NAME] = "#NULL";
@@ -356,8 +433,10 @@ bool handleCommands(client_t &reqClient, string str){
 
 //Entra em uma sala
 void join(client_t &reqClient, string roomName){
+    //Impede mais de um cliente de executar comandos ao mesmo tempo
+    lock_guard<mutex> quard(clients_mtx);
+
     if(roomName == ""){
-        cout << "Nome nulo" << endl;
         char nullName[MAX_NAME] = "#NULL";
         char warning[MAX_LEN] = "Invalid room name";
         send(reqClient.socket,nullName,sizeof(nullName),0);
@@ -377,6 +456,12 @@ void join(client_t &reqClient, string roomName){
 
 //Sai do servidor
 void quit(client_t &reqClient){
+    //Impede mais de um cliente de executar comandos ao mesmo tempo
+    lock_guard<mutex> quard(clients_mtx);
+
+    //Imprime no terminal uma mensagem informando que o cliente saio do servidor
+    sharedPrint(reqClient.name + " left the server");
+    
     //Interromper a thread do cliente
     reqClient.th.detach();
 
@@ -385,7 +470,7 @@ void quit(client_t &reqClient){
 
     //Interrompe a conexão com o cliente
     close(reqClient.socket);
-    
+
     //Apaga o cliente da lista de clientes do servidor
     for(list<client_t>::iterator client = clients.begin(); client != clients.end(); ++client){
         if(client->id == reqClient.id){
@@ -424,6 +509,9 @@ void ping(client_t &reqClient){
 
 //Expulsa
 void kick(client_t &reqClient, string targetName){
+    //Impede mais de um cliente de executar comandos ao mesmo tempo
+    lock_guard<mutex> quard(clients_mtx);
+
     //Verifica se a pessoa alvo existe
     client_t *targetClient = NULL;
 	for(list<client_t*>::iterator client = rooms[reqClient.room].begin(); client != rooms[reqClient.room].end(); ++client){
@@ -443,6 +531,9 @@ void kick(client_t &reqClient, string targetName){
         char warning[MAX_LEN] = "You were kicked by the adm";
         send(targetClient->socket,nullName,sizeof(nullName),0);
         send(targetClient->socket,warning,sizeof(warning),0);
+
+        //Imprime no terminal uma mensagem informando que o cliente foi removido da sala em q estava
+        sharedPrint(targetName + " was removed from the room " + reqClient.room);
     }
     else{
         char nullName[MAX_NAME] = "#NULL";
@@ -454,6 +545,9 @@ void kick(client_t &reqClient, string targetName){
 
 //Silencia
 void mute(client_t &reqClient, string targetName){
+    //Impede mais de um cliente de executar comandos ao mesmo tempo
+    lock_guard<mutex> quard(clients_mtx);
+
     //Verifica se a pessoa alvo existe
     client_t *targetClient = NULL;
 	for(list<client_t*>::iterator client = rooms[reqClient.room].begin(); client != rooms[reqClient.room].end(); ++client){
@@ -472,6 +566,9 @@ void mute(client_t &reqClient, string targetName){
             char warning[MAX_LEN] = "You were muted by the adm";
             send(targetClient->socket,nullName,sizeof(nullName),0);
             send(targetClient->socket,warning,sizeof(warning),0);
+
+            //Imprime no terminal uma mensagem informando que o cliente não pode mais falar
+            sharedPrint(targetName + " can no longer talk in room " + targetClient->room);
         }
     }
     else{
@@ -484,6 +581,9 @@ void mute(client_t &reqClient, string targetName){
 
 //Permite fala
 void unmute(client_t &reqClient, string targetName){
+    //Impede mais de um cliente de executar comandos ao mesmo tempo
+    lock_guard<mutex> quard(clients_mtx);
+
     //Verifica se a pessoa alvo existe
     client_t *targetClient = NULL;
 	for(list<client_t*>::iterator client = rooms[reqClient.room].begin(); client != rooms[reqClient.room].end(); ++client){
@@ -503,6 +603,9 @@ void unmute(client_t &reqClient, string targetName){
             char warning[MAX_LEN] = "You were unmuted by the adm";
             send(targetClient->socket,nullName,sizeof(nullName),0);
             send(targetClient->socket,warning,sizeof(warning),0);
+
+            //Imprime no terminal uma mensagem informando que o cliente recebeu novamente a permissão para falar
+            sharedPrint(targetName + " now can talk again in room " + targetClient->room);
         }
         
     }
@@ -516,6 +619,9 @@ void unmute(client_t &reqClient, string targetName){
 
 //Silencia
 void whois(client_t &reqClient, string targetName){
+    //Impede mais de um cliente de executar comandos ao mesmo tempo
+    lock_guard<mutex> quard(clients_mtx);
+
     //Verifica se a pessoa alvo existe
     client_t *targetClient = NULL;
 	for(list<client_t*>::iterator client = rooms[reqClient.room].begin(); client != rooms[reqClient.room].end(); ++client){
@@ -532,6 +638,9 @@ void whois(client_t &reqClient, string targetName){
         strcpy(warning, to_string(targetClient->socket).c_str());
         send(reqClient.socket,nullName,sizeof(nullName),0);
         send(reqClient.socket,warning,sizeof(warning),0);
+
+        //Imprime no terminal 
+        sharedPrint(targetName + "'s IP address is " + to_string(targetClient->socket));
     }
     else{
         char nullName[MAX_NAME] = "#NULL";
@@ -559,11 +668,14 @@ void handleClient(client_t *client){
 			return;
         }
 
+        //Salva tudo que recebeu de cada cliente no terminal
+        sharedPrint(string(client->name) + " : " + str);
+
         //Verifica se a mensagem é um comando
 		if(str[0] == '/'){
             if(handleCommands(*client, string(str))){
                 //Salva o comando de saída
-                sharedPrint(string(client->name) + " : " + str);
+                sharedPrint(string(name) + " : " + str);
                 return;
             }
 		}
@@ -573,7 +685,6 @@ void handleClient(client_t *client){
                 //Envia a mensagem para todos os outros clientes
                 broadcastMessage(string(client->name), client->id, client->room, MAX_NAME);
                 broadcastMessage(string(str), client->id, client->room);
-                
             }
             else if(client->room != ""){
                 char nullName[MAX_NAME] = "#NULL";
@@ -582,7 +693,6 @@ void handleClient(client_t *client){
                 send(client->socket,warning,sizeof(warning),0);
             }
         }
-        //Salva tudo que recebeu de cada cliente
-        sharedPrint(string(client->name) + " : " + str);
+        
 	}
 }
