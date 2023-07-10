@@ -12,8 +12,9 @@
 #include <signal.h>
 #include <mutex>
 
-#define MAX_LEN 4096
+#define MAX_MES 4096
 #define MAX_NAME 50
+#define MAX_LEN MAX_MES+MAX_NAME
 #define DEFAULT_PORT 8000
 #define NULL_NAME "#NULL"
 
@@ -63,12 +64,14 @@ int main()
     int unique = false;
     while(!unique){
         cout << "Enter your name : ";
-        cin.getline(name, MAX_NAME);
-        send(clientSocket, name, sizeof(name), 0);
 
-        char confirmation[MAX_NAME];
+        do{
+            cin.getline(name, MAX_NAME);
+            send(clientSocket, name, sizeof(name), 0);
+        } while(cin.peek());
         
         //Verifica se o nome é válido
+        char confirmation[MAX_NAME];
         recv(clientSocket, confirmation, sizeof(confirmation), 0);
         if(strcmp(confirmation, "OK") == 0){
             unique = true;
@@ -156,8 +159,8 @@ void sendMessage(int clientSocket)
 		cout << "You : ";
 
         //Lê a mensagem enviada pelo cliente
-        char str[MAX_LEN];
-        cin.getline(str, MAX_LEN);
+        char str[MAX_MES];
+        cin.getline(str, MAX_MES);
         
         //Envia a mensagem para o servidor
         send(clientSocket, str, sizeof(str), 0);
@@ -183,29 +186,19 @@ void recvMessage(int clientSocket)
         }
 		
         //Define os valores para o nome e para a mensagem
-        char name[MAX_NAME], str[MAX_LEN];
+        char str[MAX_LEN];
 		
-        //Lê o nome de quem enviou a mensagem
-        int bytes_received=recv(clientSocket, name, sizeof(name), 0);
+        //Lê a mensagem
+        int bytes_received=recv(clientSocket, str, sizeof(str), 0);
 		if(bytes_received<=0){
 			continue;
         }
 		
-        //Lê a mensagem
-        recv(clientSocket, str, sizeof(str), 0);
-		
         //Apaga o texto "You : "
         eraseText(6);
 
-        //Adiciona o número de usuário caso seja uma mensagem de outro cliente
-		if(strcmp(name, NULL_NAME)!=0){
-			cout << name << " : " << str << endl;
-        }
-
-        //Coloca a mensagem enviada pelo cliente na tela
-        else{
-			cout<< str << endl;
-        }
+        //Imprime a mensagem
+		cout<< str << endl;
 
         //Adiciona o indicador de escrita do cliente
         cout << "You : ";
