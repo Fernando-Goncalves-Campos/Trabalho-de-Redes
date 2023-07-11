@@ -31,6 +31,7 @@ struct client_t{
     bool adm;
     bool muted;
 	int socket;
+    in_addr IP;
 	thread th;
 };
 
@@ -109,7 +110,7 @@ int main(){
         lock_guard<mutex> guard(clients_mtx);
 
         //Cria o cliente
-        clients.push_back({clientId, string(DEFAULT_NAME), string(DEFAULT_ROOM), false, false, clientSocket, thread()});
+        clients.push_back({clientId, string(DEFAULT_NAME), string(DEFAULT_ROOM), false, false, clientSocket, client.sin_addr,thread()});
         struct client_t &newClient = clients.back();
         
         //Cria uma thread
@@ -174,6 +175,15 @@ void sharedPrint(string str, bool endLine=true){
 bool setName(client_t &reqClient, string name){
     //Impede mais de um cliente de executar comandos ao mesmo tempo
     lock_guard<mutex> guard(clients_mtx);
+
+    //Testa para ver se o tamanho do nome está dentro do permitido
+    if(name.length() > MAX_NAME){
+        //Apenas tenho saída de um tamanho porque é garantido que o primeiro nome do usuário seja menor que o limite
+        char message[MAX_LEN] = "This name is too long";
+        clientSend(reqClient, message, sizeof(message));
+
+        return false;
+    }
 
     for(list<client_t>::iterator client = clients.begin(); client != clients.end(); ++client){
         if(client->name == name){
@@ -617,11 +627,11 @@ void whois(client_t &reqClient, string targetName){
     //Verifica se o cliente foi encontrado
     if(targetClient){
         char warning[MAX_LEN];
-        strcpy(warning, to_string(targetClient->socket).c_str());
+        inet_ntop(AF_INET, &(targetClient->IP), warning, sizeof(warning));
         clientSend(reqClient,warning,sizeof(warning));
 
         //Imprime no terminal 
-        sharedPrint(targetName + "'s IP address is " + to_string(targetClient->socket));
+        sharedPrint(targetName + "'s IP address is " + warning);
     }
     else{
         char warning[MAX_LEN] = "Client doesn't exists";
