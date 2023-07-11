@@ -65,10 +65,8 @@ int main()
     while(!unique){
         cout << "Enter your name : ";
 
-        do{
-            cin.getline(name, MAX_NAME);
-            send(clientSocket, name, sizeof(name), 0);
-        } while(cin.peek());
+        cin.getline(name, MAX_NAME);
+        send(clientSocket, name, sizeof(name), 0);
         
         //Verifica se o nome é válido
         char confirmation[MAX_NAME];
@@ -105,9 +103,12 @@ int main()
 // Lida com os comandos
 void catchCtrlC(int signal) 
 {
+    cout << endl;
+    
     //Envia a mensagem de saída para o servidor
-	char str[MAX_LEN] = "/quit";
-	send(clientSocket, str, sizeof(str), 0);
+	char str[MAX_MES] = "/quit";
+	
+    send(clientSocket, str, sizeof(str), 0);
 	exitFlag=true;
 
     //Remove as threads
@@ -161,7 +162,15 @@ void sendMessage(int clientSocket)
         //Lê a mensagem enviada pelo cliente
         char str[MAX_MES];
         cin.getline(str, MAX_MES);
-        
+
+        //Caso seja enviado um comando EOF
+        /*O texto que estava sendo escrito é descartado, já que não houve uma confirmação de envio
+         *É enviada uma mensagem de saída para o servidor*/
+        if(!cin){
+            cout << endl;
+            strcpy(str, "/quit\0");
+        }
+
         //Envia a mensagem para o servidor
         send(clientSocket, str, sizeof(str), 0);
 
