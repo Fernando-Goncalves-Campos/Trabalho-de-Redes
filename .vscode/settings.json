@@ -7,6 +7,8 @@
         "typeinfo": "cpp",
         "system_error": "cpp",
         "ostream": "cpp",
-        "*.tcc": "cpp"
+        "*.tcc": "cpp",
+        "new": "cpp",
+        "mutex": "cpp"
     }
 }

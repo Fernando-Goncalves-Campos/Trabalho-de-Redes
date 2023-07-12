@@ -16,8 +16,11 @@
 #define MAX_MES 4096
 #define MAX_NAME 50
 #define MAX_LEN MAX_MES+MAX_NAME
+
 #define MAX_CLIENTS 10
 #define DEFAULT_PORT 8000
+#define MAX_RT 5
+
 #define DEFAULT_ROOM ""
 #define DEFAULT_NAME ""
 #define NULL_NAME "#NULL"
@@ -35,15 +38,24 @@ struct client_t{
 	thread th;
 };
 
+struct clientSend_t{
+    client_t* client;
+    char* message;
+    size_t messageSize;
+};
+
 map<string, list<client_t*>> rooms;
 list<client_t> clients;
 int clientId=0;
 mutex cout_mtx, clients_mtx;
 
 bool setName(client_t &reqClient, string name);
+
 void sharedPrint(string str, bool endLine);
 void broadcastMessage(string message, int senderId, string room);
 void clientSend(client_t &client, char* message, size_t messageSize);
+void clientSendThread(clientSend_t* data);
+
 void leaveRoom(client_t &reqClient);
 void joinRoom(client_t &reqClient, string roomName);
 void handleClient(client_t *client);
@@ -110,7 +122,7 @@ int main(){
         lock_guard<mutex> guard(clients_mtx);
 
         //Cria o cliente
-        clients.push_back({clientId, string(DEFAULT_NAME), string(DEFAULT_ROOM), false, false, clientSocket, client.sin_addr,thread()});
+        clients.push_back({clientId, string(DEFAULT_NAME), string(DEFAULT_ROOM), false, false, clientSocket, client.sin_addr});
         struct client_t &newClient = clients.back();
         
         //Cria uma thread
@@ -145,18 +157,50 @@ void broadcastMessage(string message, int senderId, string room){
     char temp[MAX_LEN];
 	strcpy(temp, message.c_str());
 
+
+    list<clientSend_t> dataList;
+    list<thread> threadList;
     //Envia a mensagem para todos os clientes que estão na mesma sala (menos para quem enviou)
 	for(list<client_t*>::iterator client = rooms[room].begin(); client != rooms[room].end(); ++client){
         if((*client)->id != senderId)
 		{
-			clientSend(*(*client),temp,sizeof(temp));
+            dataList.push_back(clientSend_t{*client, temp, sizeof(temp)});
+            threadList.push_back(thread(clientSendThread,&dataList.back()));
 		}
+    }
+
+    for(list<thread>::iterator t = threadList.begin(); t != threadList.end(); ++t){
+        t->join();
+    }
+}
+
+//Envia a mensagem para o cliente selecionado
+void clientSendThread(clientSend_t* data){
+    //Tenta enviar a mensagem até que consiga, ou até que chegue no número limite de tentativas
+    size_t bytesSent = 0;
+    for(int i=0; i<MAX_RT && bytesSent < data->messageSize; ++i){
+        bytesSent = send(data->client->socket,data->message,data->messageSize,0);
+    }
+
+    //Caso ele não tenha conseguido enviar, o processo corta a conexão com o cliente
+    if(bytesSent < data->messageSize){
+        quit(*(data->client));
     }
 }
 
 //Envia a mensagem para o cliente selecionado
 void clientSend(client_t &client, char* message, size_t messageSize){
-    send(client.socket,message,messageSize,0);
+    //Tenta enviar a mensagem até que consiga, ou até que chegue no número limite de tentativas
+    size_t bytesSent = 0;
+    for(int i=0; i<MAX_RT && bytesSent < messageSize; ++i){
+        bytesSent = send(client.socket,message,messageSize,0);
+    }
+
+    //Caso ele não tenha conseguido enviar, o processo corta a conexão com o cliente
+    if(bytesSent < messageSize){
+        quit(client);
+    }
+    
 }
 
 //Imprime todas as mensagens de todas as salas no terminal do servidor
