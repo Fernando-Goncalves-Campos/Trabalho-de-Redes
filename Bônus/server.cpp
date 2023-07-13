@@ -302,6 +302,11 @@ void leaveRoom(client_t &reqClient){
                     rooms.erase(reqClient.room);
                     sharedPrint(string("Room ") + string(reqClient.room) + " deleted");
                 }
+
+                //Apaga todos os convites para essa sala
+                for(auto& client: clients){
+                    client.invitations.erase(reqClient.room);
+                }
             }
 
             //Determina o próximo adm
