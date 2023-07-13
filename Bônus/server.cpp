@@ -1,6 +1,7 @@
 #include <iostream>
 #include <list>
 #include <map>
+#include <set>
 
 #include <bits/stdc++.h>
 #include <sys/types.h>
@@ -35,6 +36,7 @@ struct client_t{
     bool muted;
 	int socket;
     in_addr IP;
+    set<string> invitations;
 	thread th;
 };
 
@@ -69,6 +71,7 @@ void kick(client_t &reqClient, string targetName);
 void mute(client_t &reqClient, string targetName);
 void unmute(client_t &reqClient, string targetName);
 void whois(client_t &reqClient, string targetName);
+void invite(client_t &reqClient, string targetName);
 
 int main(){
     //Cria o socket do servidor
@@ -263,7 +266,10 @@ bool setName(client_t &reqClient, string name){
         char warning[MAX_LEN] = "Successfully changed your name";
         clientSend(reqClient,warning,sizeof(warning));
     }
-    
+
+    //Remove os convites que o cliente havia recebido, já que ele os recebeu em seu antigo nome
+    reqClient.invitations.clear();
+
     //Altera o nome do cliente
     reqClient.name = name;
 
@@ -471,7 +477,24 @@ bool handleCommands(client_t &reqClient, string str){
         }
         return false;
     }
-
+    //Comando /whois
+    else if(command == "/invite"){
+        if(reqClient.adm){
+            //Verifica se o comando foi enviado com o nome do cliente
+            if(commandEnd != string::npos){
+                invite(reqClient, str.substr(commandEnd+1));
+            }
+            else{
+                char warning[MAX_LEN] = "You need to provide the name of the client that you want to invite";
+                clientSend(reqClient,warning,sizeof(warning));
+            }
+        }
+        else{
+            char warning[MAX_LEN] = "You don't have permission to execute this command";
+            clientSend(reqClient,warning,sizeof(warning));
+        }
+        return false;
+    }
     ////Mensagem de comando inválido
     else{
         char warning[MAX_LEN] = "Invalid command";
@@ -498,9 +521,15 @@ void join(client_t &reqClient, string roomName){
     }
 
     //Entra na sala
-    else{
+    else if(reqClient.invitations.find(roomName) != reqClient.invitations.end() || rooms.find(roomName) == rooms.end()){
         leaveRoom(reqClient);
         joinRoom(reqClient, roomName);
+    }
+
+    //Informa que não possui permissão para entrar na sala
+    else{
+        char warning[MAX_LEN] = "You wasn't invited to join this room";
+        clientSend(reqClient,warning,sizeof(warning));
     }
 }
 
@@ -558,6 +587,14 @@ void ping(client_t &reqClient){
 
 //Expulsa
 void kick(client_t &reqClient, string targetName){
+    //Informa o adm que ele está falando dele mesmo
+    if(targetName == reqClient.name){
+        //Informa o adm que o convite foi enviado
+        char inform[MAX_LEN] = "That's your name";
+        clientSend(reqClient,inform,sizeof(inform));
+        return;
+    }
+    
     //Impede mais de um cliente de executar comandos ao mesmo tempo
     lock_guard<mutex> guard(clients_mtx);
 
@@ -590,6 +627,14 @@ void kick(client_t &reqClient, string targetName){
 
 //Silencia
 void mute(client_t &reqClient, string targetName){
+    //Informa o adm que ele está falando dele mesmo
+    if(targetName == reqClient.name){
+        //Informa o adm que o convite foi enviado
+        char inform[MAX_LEN] = "That's your name";
+        clientSend(reqClient,inform,sizeof(inform));
+        return;
+    }
+    
     //Impede mais de um cliente de executar comandos ao mesmo tempo
     lock_guard<mutex> guard(clients_mtx);
 
@@ -656,6 +701,14 @@ void unmute(client_t &reqClient, string targetName){
 
 //Silencia
 void whois(client_t &reqClient, string targetName){
+    //Informa o adm que ele está falando dele mesmo
+    if(targetName == reqClient.name){
+        //Informa o adm que o convite foi enviado
+        char inform[MAX_LEN] = "That's your name";
+        clientSend(reqClient,inform,sizeof(inform));
+        return;
+    }
+    
     //Impede mais de um cliente de executar comandos ao mesmo tempo
     lock_guard<mutex> guard(clients_mtx);
 
@@ -678,6 +731,55 @@ void whois(client_t &reqClient, string targetName){
         sharedPrint(targetName + "'s IP address is " + warning);
     }
     else{
+        char warning[MAX_LEN] = "Client doesn't exists";
+        clientSend(reqClient,warning,sizeof(warning));
+    }
+}
+
+//Convida para entrar na sala
+void invite(client_t &reqClient, string targetName){
+    //Informa o adm que ele está falando dele mesmo
+    if(targetName == reqClient.name){
+        //Informa o adm que o convite foi enviado
+        char inform[MAX_LEN] = "That's your name";
+        clientSend(reqClient,inform,sizeof(inform));
+        return;
+    }
+
+    //Impede mais de um cliente de executar comandos ao mesmo tempo
+    lock_guard<mutex> guard(clients_mtx);
+
+    //Verifica se a pessoa alvo existe
+    bool found = false;
+	for(list<client_t>::iterator client = clients.begin(); client != clients.end(); ++client){
+        if(client->name == targetName)
+		{
+            found = true;
+			if(client->invitations.find(reqClient.room) != client->invitations.end()){
+                //Informa a pessoa que está enviando a mensagem que esse convite já foi enviado
+                char warning[MAX_LEN] = "Client already was invited to join this room";
+                clientSend(reqClient,warning,sizeof(warning));
+            }
+            else{
+                //Informa o adm que o convite foi enviado
+                char inform[MAX_LEN] = "Invitation sent";
+                clientSend(reqClient,inform,sizeof(inform));
+
+                //Informa o cliente que foi convidado sobre o convite
+                char warning[MAX_LEN] = "You where invited to join room ";
+                strcat(warning, reqClient.room.c_str());
+                clientSend(*client,warning,sizeof(warning));
+
+                //Envia o convite
+                client->invitations.insert(reqClient.room);
+            }
+
+            break;
+		}
+    }
+
+    //Verifica se o cliente foi encontrado
+    if(!found){
         char warning[MAX_LEN] = "Client doesn't exists";
         clientSend(reqClient,warning,sizeof(warning));
     }

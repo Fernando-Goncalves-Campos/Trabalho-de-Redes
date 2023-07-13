@@ -558,6 +558,14 @@ void ping(client_t &reqClient){
 
 //Expulsa
 void kick(client_t &reqClient, string targetName){
+    //Informa o adm que ele está falando dele mesmo
+    if(targetName == reqClient.name){
+        //Informa o adm que o convite foi enviado
+        char inform[MAX_LEN] = "That's your name";
+        clientSend(reqClient,inform,sizeof(inform));
+        return;
+    }
+
     //Impede mais de um cliente de executar comandos ao mesmo tempo
     lock_guard<mutex> guard(clients_mtx);
 
@@ -590,6 +598,14 @@ void kick(client_t &reqClient, string targetName){
 
 //Silencia
 void mute(client_t &reqClient, string targetName){
+    //Informa o adm que ele está falando dele mesmo
+    if(targetName == reqClient.name){
+        //Informa o adm que o convite foi enviado
+        char inform[MAX_LEN] = "That's your name";
+        clientSend(reqClient,inform,sizeof(inform));
+        return;
+    }
+
     //Impede mais de um cliente de executar comandos ao mesmo tempo
     lock_guard<mutex> guard(clients_mtx);
 
@@ -656,6 +672,14 @@ void unmute(client_t &reqClient, string targetName){
 
 //Silencia
 void whois(client_t &reqClient, string targetName){
+    //Informa o adm que ele está falando dele mesmo
+    if(targetName == reqClient.name){
+        //Informa o adm que o convite foi enviado
+        char inform[MAX_LEN] = "That's your name";
+        clientSend(reqClient,inform,sizeof(inform));
+        return;
+    }
+    
     //Impede mais de um cliente de executar comandos ao mesmo tempo
     lock_guard<mutex> guard(clients_mtx);
 
