@@ -18,7 +18,7 @@
 #define MAX_LEN MAX_MES+MAX_NAME
 
 #define MAX_CLIENTS 10
-#define DEFAULT_PORT 8000
+#define DEFAULT_PORT 8002
 #define MAX_RT 5
 
 #define DEFAULT_ROOM ""
@@ -702,7 +702,7 @@ void handleClient(client_t *client){
         }
 
         //Salva tudo que recebeu de cada cliente no terminal
-        sharedPrint(string(client->name) + " : " + string(str));
+        sharedPrint(string(client->name) + ": " + string(str));
 
         //Verifica se a mensagem é um comando
 		if(str[0] == '/'){

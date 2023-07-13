@@ -15,7 +15,7 @@
 #define MAX_MES 4096
 #define MAX_NAME 50
 #define MAX_LEN MAX_MES+MAX_NAME
-#define DEFAULT_PORT 8000
+#define DEFAULT_PORT 8001
 #define NULL_NAME "#NULL"
 
 using namespace std;
@@ -24,14 +24,33 @@ bool exitFlag=false;
 thread t_send, t_recv;
 int clientSocket;
 
+bool running = true;
+
 void catchCtrlC(int signal);
-bool checkQuit(char command[]);
+bool checkQuit(string str);
 void eraseText(int cnt);
 void sendMessage(int clientSocket);
 void recvMessage(int clientSocket);
 
 int main()
 {
+    //Espera pelo comando para conectar com o servidor
+    while(true){
+        //Lê o que está sendo digitado
+        char buffer[MAX_MES];
+        cin.getline(buffer, MAX_MES);
+        string str(buffer);
+
+        //Realiza a verificação
+        size_t commandEnd = str.find(' ');
+        string command = str.substr(0, commandEnd);
+        
+        //Inicia a conexão
+        if(command == "/connect"){
+            break;
+        }
+    }
+
     //Entra no servidor padrão
     //Cria o socket do cliente
 	if((clientSocket=socket(AF_INET, SOCK_STREAM, 0)) == -1)
@@ -121,9 +140,13 @@ void catchCtrlC(int signal)
 }
 
 // Verifica se o cliente deseja desconectar do servidor
-bool checkQuit(char command[]){
+bool checkQuit(string str){
+    //Realiza a verificação
+    size_t commandEnd = str.find(' ');
+    string command = str.substr(0, commandEnd);
+
     //Verifica se o comando digitado era o de saída
-    if(command[1] == 'q' && command[2] == 'u' && command[3] == 'i' && command[4] == 't'){
+    if(command == "/quit"){
         //Interrompe a execução do cliente
         exitFlag=true;
 
@@ -157,7 +180,7 @@ void sendMessage(int clientSocket)
 	while(1)
 	{
         //Adiciona o texto para indicar que a mensagem está sendo escrita pelo cliente
-		cout << "You : ";
+		cout << "You: ";
 
         //Lê a mensagem enviada pelo cliente
         char str[MAX_MES];
@@ -176,7 +199,7 @@ void sendMessage(int clientSocket)
 
         //Verifica se o cliente deseja sair
         if(str[0] == '/'){
-            if(checkQuit(str)){
+            if(checkQuit(string(str))){
                 break;
             }
         }
@@ -204,13 +227,13 @@ void recvMessage(int clientSocket)
         }
 		
         //Apaga o texto "You : "
-        eraseText(6);
+        eraseText(5);
 
         //Imprime a mensagem
 		cout<< str << endl;
 
         //Adiciona o indicador de escrita do cliente
-        cout << "You : ";
+        cout << "You: ";
 
 		fflush(stdout);
 	}	
