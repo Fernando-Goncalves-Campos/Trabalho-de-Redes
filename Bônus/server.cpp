@@ -623,6 +623,9 @@ void kick(client_t &reqClient, string targetName){
 
         //Imprime no terminal uma mensagem informando que o cliente foi removido da sala em q estava
         sharedPrint(targetName + " was removed from the room " + reqClient.room);
+
+        //Remove o convite que o cliente possuia para essa sala
+        targetClient->invitations.erase(reqClient.room);
     }
     else{
         char warning[MAX_LEN] = "Client doesnt exists";
