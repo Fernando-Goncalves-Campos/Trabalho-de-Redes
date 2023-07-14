@@ -32,6 +32,23 @@ void recvMessage(int clientSocket);
 
 int main()
 {
+    //Espera pelo comando para conectar com o servidor
+    while(true){
+        //Lê o que está sendo digitado
+        char buffer[MAX_MES];
+        cin.getline(buffer, MAX_MES);
+        string str(buffer);
+
+        //Realiza a verificação
+        size_t commandEnd = str.find(' ');
+        string command = str.substr(0, commandEnd);
+        
+        //Inicia a conexão
+        if(command == "/connect"){
+            break;
+        }
+    }
+    
     //Entra no servidor padrão
     //Cria o socket do cliente
 	if((clientSocket=socket(AF_INET, SOCK_STREAM, 0)) == -1)

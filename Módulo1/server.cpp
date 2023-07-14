@@ -17,7 +17,7 @@
 #define MAX_NAME 50
 #define MAX_LEN MAX_MES+MAX_NAME
 
-#define MAX_CLIENTS 10
+#define MAX_CLIENTS 2
 #define DEFAULT_PORT 8000
 #define MAX_RT 5
 
