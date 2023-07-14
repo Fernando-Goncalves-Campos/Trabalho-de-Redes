@@ -1,16 +1,19 @@
-Alunos:                                 NUSP:<br>
--Bernardo Rodrigues Tameirão Santos     12733212<br>
--Fernando Gonçalves Campos              12542352<br>
--Samuel Figueiredo Veronez              12542626<br>
+<pre>Alunos:                                 NUSP:
+-Bernardo Rodrigues Tameirão Santos     12733212
+-Fernando Gonçalves Campos              12542352
+-Samuel Figueiredo Veronez              12542626
+</pre>
 
-Versão SO:
-
-
-Compilador:
-
-
-Vídeo:
+Versão SO:\
+Ubuntu 20.04.6 LTS
 
 
-Fontes para fazer o trabalho:
-Os códigos encontrados em https://github.com/cjchirag7/chatroom-cpp foram utilizados como base para a realização do trabalho
+Compilador:\
+g++ (Ubuntu 9.4.0-1ubuntu1~20.04.1) 9.4.0
+
+Vídeos:\
+[Módulo 1](https://link-url-here.org)\
+[Módulo 2](https://link-url-here.org)\
+[Módulo 3](https://link-url-here.org)\
+[Bônus](https://link-url-here.org)
+[Execução do código](https://link-url-here.org)
