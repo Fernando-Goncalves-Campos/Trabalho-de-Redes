@@ -1,4 +1,4 @@
-#### Descrição
+### Descrição
 
 Imagine uma aplicação online como um chat ou um jogo. Como a comunicação dela é feita?
 
