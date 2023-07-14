@@ -1,5 +1,0 @@
-all:
-	+$(MAKE) -C Módulo1 -f MAKEFILE
-	+$(MAKE) -C Módulo2 -f MAKEFILE
-	+$(MAKE) -C Módulo3 -f MAKEFILE
-	+$(MAKE) -C Bônus -f MAKEFILE

@@ -5,4 +5,4 @@ PROGRAMS= server client
 all: $(PROGRAMS)
 
 $(PROGRAMS): %: %.cpp
-	$(CC) $(CFLAGS) -c -o $@ $< 
+	$(CC) $(CFLAGS) -o $@ $< 
