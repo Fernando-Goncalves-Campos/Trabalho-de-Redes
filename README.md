@@ -11,9 +11,9 @@ Compilador:\
 g++ (Ubuntu 9.4.0-1ubuntu1~20.04.1) 9.4.0
 
 Vídeos:\
-[Módulo 1](https://link-url-here.org)\
-[Módulo 2](https://link-url-here.org)\
-[Módulo 3 + Bônus](https://link-url-here.org)\
+Bernardo: [Módulo 1](https://link-url-here.org)\
+Samuel: [Módulo 2](https://link-url-here.org)\
+Fernando: [Módulo 3 + Bônus](https://link-url-here.org)\
 [Execução do código](https://link-url-here.org)
 
 Observações sobre o projeto:\
