@@ -11,7 +11,7 @@ Compilador:\
 g++ (Ubuntu 9.4.0-1ubuntu1~20.04.1) 9.4.0
 
 Vídeos:\
-Bernardo: [Módulo 1](https://link-url-here.org)\
+Bernardo: [Módulo 1](https://drive.google.com/file/d/1KqnBgqU27xyliWh9UEdRKB2cEs0D2ccM/view?usp=sharing)\
 Samuel: [Módulo 2](https://drive.google.com/file/d/1aieanizD34jqbXAnPY4wu1DxknT5lF1i/view?usp=sharing)\
 Fernando: [Módulo 3 + Bônus](https://drive.google.com/file/d/1bSCPRiFVlpA6DyJaEo2B9pyDCnwVgJLj/view?usp=sharing)\
 [Execução do código](https://link-url-here.org)
